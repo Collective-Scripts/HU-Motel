@@ -321,7 +321,8 @@ function OpenMotelMenu(k, unit_name, unit_price, has_unit_key)
                     event = 'col_motels:Actions',
                     args = {
                         action = 'give_key',
-                        motel_data = k
+                        motel_data = k,
+                        unit_name = unit_name
                     }
                 },
                 {
@@ -434,7 +435,7 @@ AddEventHandler('col_motels:Actions', function(data)
     elseif action == 'sell_motel' then
         ConfirmMotelSell(data.motel_data, data.unit_name, data.unit_price)
     elseif action == 'give_key' then
-        GiveMotelKey(data.motel_data)
+        GiveMotelKey(data.motel_data, data.unit_name)
     elseif action == 'change_key' then
         ConfirmChangeMotelKey(data.motel_data, Config.ChangeDoorLockPrice)   
     elseif action == 'rent_options' then
@@ -760,14 +761,14 @@ function ConfirmCancelRentUnit(k)
     end 
 end
 
-function GiveMotelKey(k)
+function GiveMotelKey(k, unit_name)
     local input = lib.inputDialog('Co-Owner Player ID', {'ID:'})
     if input then
         local co_owner_id = tonumber(input[1])
         if input[1] == nil or input[1] == "" or type(co_owner_id) ~= 'number' or co_owner_id == nil or co_owner_id == "" or co_owner_id <= 0 then
             CollectiveC.Notification(3, locale('invalid_input'))      
         else
-            TriggerServerEvent('col_motels:giveMotelKey', k, co_owner_id)                
+            TriggerServerEvent('col_motels:giveMotelKey', k, co_owner_id, unit_name)                
         end
     end  
 end
@@ -782,7 +783,7 @@ function SetMotelRentPrice(k)
             CollectiveC.Notification(3, locale('invalid_input'))      
         else
             if rentPrice >= minPrice and rentPrice <= maxPrice then
-                TriggerServerEvent('col_motels:setMotelRentPrice', k, co_owner_id) 
+                TriggerServerEvent('col_motels:setMotelRentPrice', k, rentPrice) 
             else
                 CollectiveC.Notification(3, locale('motel_set_price', ESX.Math.GroupDigits(minPrice), ESX.Math.GroupDigits(maxPrice)))      
             end

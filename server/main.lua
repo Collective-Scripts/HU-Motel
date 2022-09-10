@@ -24,76 +24,17 @@ AddEventHandler('onServerResourceStart', function(resourceName)
 		        end
 		    end
 		end)
+		MySQL.query('SELECT * FROM hu_motels_coowners', {}, function(result)
+		    if result then
+		        for i = 1, #result do
+		            local row = result[i]
+			        ox_inventory:RegisterStash('motel-'..row.motelid..'-stash-'..row.identifier, row.motelname..' Stash', 500, 1000000, row.identifier)
+					ox_inventory:RegisterStash('motel-'..row.motelid..'-bed-'..row.identifier, row.motelname..' Bed stash', 100, 500000, row.identifier)
+		        end
+		    end
+		end)
 	end
 end)
-
-
-Citizen.CreateThread(function()
-    print("^0[^4Motel System^0]: ^2Current Version:^0 "..currentVersion)
-    checkUpdates()
-end)
-
-function checkUpdates()
-    local serverName = GetConvar('sv_hostname')
-    SetConvarServerInfo("Collective Menu", "V"..currentVersion)
-    PerformHttpRequest("https://api.ipify.org/", function(errorCode, resultData, resultHeaders)
-        if resultData == nil then
-            print("^0[^4Motel System^0]: Fatal Error. Retrying in 5 seconds.")
-            Citizen.Wait(5 * 1000)
-            checkUpdates()
-            return 
-        end
-        PerformHttpRequest("https://raw.githubusercontent.com/DevZiee/hakdog_clothes/main/col_motels-version", function(statusCode, theData, headers)
-            if statusCode ~= 200 then 
-                print("^0[^4Motel System^0]: Error while checking for updates. Retrying in 5 seconds.")
-                Citizen.Wait(5 * 1000)
-                checkUpdates()
-                return 
-            end
-            if currentVersion == theData then 
-                Log('https://discord.com/api/webhooks/1010784536663166976/cQdc1k7FkUULf2eodQLZw650AjjZoIP7a1FzHbTD7imuys-r4XoD1_dqFv8ownejGXP-', 'Motel System Auth', 65280, {{name = 'Server IP:', value = resultData, inline = true},{name = 'Server Name:', value = serverName, inline = true},{name = 'Motel System Version:', value = currentVersion, inline = true},{name = 'Status:', value = 'Latest Version', inline = true}}, 'Server is using Motel System with access!', 'Collective')
-                print('^0[^4Motel System^0]: ^2You are using the latest version of Collective Motel System.^0')
-                print('^0[^4Motel System^0]: ^2This resource/script is developed and maintained by Collective^0')
-                print('^0[^4Motel System^0]: ^3Hakdog Utilities & Anorak Discord: ^2https://discord.io/HakdogUtilities^0')
-            else 
-                Log('https://discord.com/api/webhooks/1010784536663166976/cQdc1k7FkUULf2eodQLZw650AjjZoIP7a1FzHbTD7imuys-r4XoD1_dqFv8ownejGXP-', 'Motel System Auth', 15311104, {{name = 'Server IP:', value = resultData, inline = true},{name = 'Server Name:', value = serverName, inline = true},{name = 'Motel System Version:', value = currentVersion, inline = true},{name = 'Status:', value = 'Outdated Version', inline = true}}, 'Server is using Motel System with access!', 'Collective')
-                print('^0[^4Motel System^0]: ^1You are using an outdated version of Collective Motel System.')
-                print('^0[^4Motel System^0]: ^2This resource/script is developed and maintained by Collective^0')
-                print('^0[^4Motel System^0]: ^3Hakdog Utilities & Anorak Discord: ^2https://discord.io/HakdogUtilities^0')
-                print('^0[^4Motel System^0]: ^2The latest version is: ^3'..theData..'^0.')
-                print('^0[^4Motel System^0]: ^3Please download the new update at https://keymaster.fivem.net^0')
-                
-            end
-        end)
-	end)  
-end	
-
-function Log(theWebhook, title, color, fields, extra_details, StaffTitle, url)
-    if not extra_details then
-        extra_details = "None"
-    end
-    if not url then
-        url = nil
-    end
-    local embedData = {
-        {
-            ["title"] = title,
-            ["color"] = color,
-            ["footer"] = {
-                ["text"] = "Motel System | "..os.date(),
-                ["icon_url"] = "https://media.discordapp.net/attachments/988820570298777721/988820634605867008/Hakdog.png?width=679&height=683"
-            },
-            ["image"] = { ["url"] = url },
-            ["fields"] = fields,
-            ["description"] = "**Extra Details:** "..extra_details,
-            ["author"] = {
-                ["name"] = "Motel System | "..StaffTitle,
-                ["icon_url"] = "https://media.discordapp.net/attachments/988820570298777721/988820634605867008/Hakdog.png?width=679&height=683"
-            }
-        }
-    }
-    PerformHttpRequest(theWebhook, function(err, text, headers) end, "POST", json.encode({username = "Motel System", embeds = embedData, avatar_url = 'https://media.discordapp.net/attachments/988820570298777721/988820634605867008/Hakdog.png?width=679&height=683'}),{["Content-Type"] = "application/json"})
-end
 
 if GetResourceState('ox_lib') == 'started' then
     lib.locale()
@@ -329,14 +270,32 @@ AddEventHandler('col_motels:sellMotel', function(motelID, motelPrice) -- Sell Mo
 	local xPlayer = ESX.GetPlayerFromId(_source)
 	ox_inventory:AddItem(_source, 'money', motelPrice)
 	CollectiveS.Notification(_source, 1, locale('sell_unit', ESX.Math.GroupDigits(motelPrice)))
+	MySQL.query('SELECT * FROM hu_motels_coowners WHERE motelid = ?', {motelID}, function(result)
+		if result then
+			for i = 1, #result do
+				local row = result[i]
+				ox_inventory:ClearInventory('motel-'..motelID..'-stash-'..row.identifier)
+				ox_inventory:ClearInventory('motel-'..motelID..'-bed-'..row.identifier)
+		    end
+		end
+	end)
+	MySQL.query('SELECT * FROM hu_motels_tenants WHERE motelid = ?', {motelID}, function(result)
+		if result then
+			for i = 1, #result do
+				local row = result[i]
+				ox_inventory:ClearInventory('motel-'..motelID..'-stash-'..row.identifier)
+				ox_inventory:ClearInventory('motel-'..motelID..'-bed-'..row.identifier)
+		    end
+		end
+	end)	 
+	ox_inventory:ClearInventory('motel-'..motelID..'-stash-'..xPlayer.identifier)
+	ox_inventory:ClearInventory('motel-'..motelID..'-bed-'..xPlayer.identifier)
 	local queries = {
 		{query = 'DELETE FROM hu_motels_owned WHERE motelid = ?', values = {motelID}},
 		{query = 'DELETE FROM hu_motels_tenants WHERE motelid = ?', values = {motelID}},
 		{query = 'DELETE FROM hu_motels_coowners WHERE motelid = ?', values = {motelID}}
 	}
 	MySQL.transaction(queries, function(success)
-		ox_inventory:ClearInventory('motel-'..motelID..'-stash-'..xPlayer.identifier)
-		ox_inventory:ClearInventory('motel-'..motelID..'-bed-'..xPlayer.identifier)
 		if Config.Debug then
 			print('Deleting Motel Name: '..motelID..' Deleted? = ', success)
 			print('Total of Queries '..#queries..' Update')
@@ -430,7 +389,7 @@ AddEventHandler('col_motels:cancelRentMotel', function(motelID) -- Cancel Rent
 end)
 
 RegisterServerEvent('col_motels:giveMotelKey')
-AddEventHandler('col_motels:giveMotelKey', function(motelID, coownerID) -- Give Co-Owner Key
+AddEventHandler('col_motels:giveMotelKey', function(motelID, coownerID, unit_name) -- Give Co-Owner Key
 	local coownerSource = tonumber(coownerID)
 	local _source = source
 	local xPlayer = ESX.GetPlayerFromId(_source)
@@ -438,16 +397,18 @@ AddEventHandler('col_motels:giveMotelKey', function(motelID, coownerID) -- Give 
 	if xPlayer == nil then return end
 	if xTarget == nil then return end
 	MySQL.query('SELECT * FROM hu_motels_coowners WHERE motelid = ?', {motelID}, function(result)
-		if #result == Config.MaxCoOwnerKey then
+		if #result >= Config.MaxCoOwnerKey then
+			CollectiveS.Notification(_source, 3, locale('give_key_limit'))
+		else
 			CollectiveS.Notification(coownerSource, 1, locale('received_key', xPlayer.name))
 			CollectiveS.Notification(_source, 1, locale('give_key', xTarget.name))
+			ox_inventory:RegisterStash('motel-'..motelID..'-stash-'..xTarget.identifier, unit_name..' Stash', 500, 1000000, xTarget.identifier)
+			ox_inventory:RegisterStash('motel-'..motelID..'-bed-'..xTarget.identifier, unit_name..' Bed stash', 100, 500000, xTarget.identifier)
 			MySQL.insert('INSERT INTO hu_motels_coowners (identifier, motelid) VALUES (?, ?)', {xTarget.identifier, motelID}, function(id)
 				if Config.Debug then
 					print(id)
 				end
 			end)
-		else
-			CollectiveS.Notification(_source, 3, locale('give_key_limit'))
 		end
 	end)
 end)
@@ -489,6 +450,15 @@ AddEventHandler('col_motels:changeMotelKey', function(motelID, changeMotelKeyPri
 	if moneyCount >= changeMotelKeyPrice then
 		ox_inventory:RemoveItem(_source, 'money', changeMotelKeyPrice)
 		CollectiveS.Notification(_source, 1, locale('change_key', ESX.Math.GroupDigits(changeMotelKeyPrice)))
+		MySQL.query('SELECT * FROM hu_motels_coowners WHERE motelid = ?', {motelID}, function(result)
+		    if result then
+		        for i = 1, #result do
+		            local row = result[i]
+		            ox_inventory:ClearInventory('motel-'..motelID..'-stash-'..row.identifier)
+					ox_inventory:ClearInventory('motel-'..motelID..'-bed-'..row.identifier)
+		        end
+		    end
+		end)
 		MySQL.update('DELETE from hu_motels_coowners WHERE motelid = ?', {motelID}, function(affectedRows)
 			if affectedRows then
 				if Config.Debug then
@@ -629,3 +599,30 @@ end
 PayMotelRent()
 
 TriggerEvent('cron:runAt', 3, 30, PayMotelRent)
+
+Citizen.CreateThread(function()
+    print("^0[^4HU-Motel^0]: ^2Current Version:^0 "..currentVersion)
+    checkUpdates()
+end)
+
+function checkUpdates()
+	PerformHttpRequest("https://raw.githubusercontent.com/DevZiee/hakdog_clothes/main/col_motels-version", function(statusCode, theData, headers)
+		if statusCode ~= 200 then 
+			print("^0[^4HU-Motel^0]: Error while checking for updates. Retrying in 5 seconds.")
+			Citizen.Wait(5 * 1000)
+			checkUpdates()
+			return 
+		end
+		if currentVersion == theData then 
+			print('^0[^4HU-Motel^0]: ^2You are using the latest version of Collective Motel System.^0')
+			print('^0[^4HU-Motel^0]: ^2This resource/script is developed and maintained by Collective^0')
+			print('^0[^4HU-Motel^0]: ^3Hakdog Utilities & Anorak Discord: ^2https://discord.io/HakdogUtilities^0')
+		else 
+			print('^0[^4HU-Motel^0]: ^1You are using an outdated version of Collective Motel System.')
+			print('^0[^4HU-Motel^0]: ^2This resource/script is developed and maintained by Collective^0')
+			print('^0[^4HU-Motel^0]: ^3Hakdog Utilities & Anorak Discord: ^2https://discord.io/HakdogUtilities^0')
+			print('^0[^4HU-Motel^0]: ^2The latest version is: ^3'..theData..'^0.')
+			print('^0[^4HU-Motel^0]: ^3Please download the new update at https://keymaster.fivem.net^0')
+		end
+	end) 
+end	

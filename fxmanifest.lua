@@ -2,7 +2,7 @@
 fx_version 'cerulean'
 games {'gta5'}
 lua54 'yes'
-version '0.0.2'
+version '0.0.3'
 
 --[[ Resource Information ]]--
 description  'Motels System compatible with ox_inventory'
@@ -13,7 +13,11 @@ dependencies {
 	'/onesync',
 	'ox_lib',
     'es_extended',
-    'oxmysql'
+    'oxmysql',
+    'cron',
+    'ox_inventory',
+    'esx_datastore',
+    
 }
 
 files {
@@ -37,7 +41,6 @@ client_scripts {
     'shared/cl_notify.lua',
     'client/main.lua'
 }
-
 
 escrow_ignore {
     'config.lua',
