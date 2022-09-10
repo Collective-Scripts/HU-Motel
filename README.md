@@ -1,1 +1,1 @@
-For more information: ('https://discord.io/HakdogUtilities')[Discord]
+For more information: [Discord]('https://discord.io/HakdogUtilities')
